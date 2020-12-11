@@ -194,35 +194,35 @@ tab bact,m
 
 *EXAMPLE OUTCOMES SHOWN BELOW
 
-tab agegroup bact, row chi 			/*chi-square=79, p=0.000     */
-tab sex bact, row chi 				/*chi-square=40, p=0.000     */
-tab strata bact, row chi 			/*chi-square=3.4, p=0.183	 */
-tab cxr1 bact, row chi 				/*chi-square=342, p=0.000    */
-tab cxr2 bact, row chi 				/*chi-square=495, p=0.000    */
-tab pasttb bact, row chi 			/*chi-square=0.16, p=0.685 */
-tab currenttb bact, row chi 		/*chi-square=3.1, p=0.080 */
-tab cough bact, row chi 			/*chi-square=88, p=0.000     */
-tab fever bact, row chi 			/*chi-square=19, p=0.000     */
-tab body_weight bact, row chi 		/*chi-square=31, p=0.000     */
-tab sweat bact, row chi 			/*chi-square=17, p=0.000     */
-tab hivcombined bact, row chi 		/*chi-square=11, p=0.001     */
+tab agegroup bact, row chi 			/*chi-square=79, p=0.000     	*/
+tab sex bact, row chi 				/*chi-square=40, p=0.000     	*/
+tab strata bact, row chi 			/*chi-square=3.4, p=0.183	*/
+tab cxr1 bact, row chi 				/*chi-square=342, p=0.000    	*/
+tab cxr2 bact, row chi 				/*chi-square=495, p=0.000    	*/
+tab pasttb bact, row chi 			/*chi-square=0.16, p=0.685 	*/
+tab currenttb bact, row chi 			/*chi-square=3.1, p=0.080 	*/
+tab cough bact, row chi 			/*chi-square=88, p=0.000     	*/
+tab fever bact, row chi 			/*chi-square=19, p=0.000     	*/
+tab body_weight bact, row chi 			/*chi-square=31, p=0.000     	*/
+tab sweat bact, row chi 			/*chi-square=17, p=0.000     	*/
+tab hivcombined bact, row chi 			/*chi-square=11, p=0.001     	*/
 
 * With typically large sample sizes involved most associations will be "significant", it is hence also important
 * to quantify associations with OR's to also establish their importance
 
 
 xi: logistic bact i.agegroup   		/*OR=, p=  all but age group 15-24 are significant     */
-xi: logistic bact sex  				/*OR=3.1, p= 0.000        */
-xi: logistic bact i.strata   		/*OR=, p=  none are signficant   */
-xi: logistic bact cxr1   			/*OR=178, p=0.000        */
-xi: logistic bact cxr2   			/*OR=34, p=0.000         */
-xi: logistic bact pasttb   			/*chi-square=1.1, p=0.69        */
-xi: logistic bact currenttb   		/*chi-square=2.4, p=0.09         */
-xi: logistic bact cough   			/*chi-square=4.7, p=0.000        */
-xi: logistic bact fever  			/*chi-square=2.98, p=0.000        */
-xi: logistic bact body_weight   	/*chi-square=3.2, p=0.000        */
-xi: logistic bact sweat  			/*chi-square=2.8, p=0.000        */
-xi: logistic bact hivcombined  		/*chi-square=1.9, p=0.001        */
+xi: logistic bact sex  			/*OR=3.1, p= 0.000        	*/
+xi: logistic bact i.strata   		/*OR=, p=  none are signficant  */
+xi: logistic bact cxr1   		/*OR=178, p=0.000        	*/
+xi: logistic bact cxr2   		/*OR=34, p=0.000         	*/
+xi: logistic bact pasttb   		/*OR=1.1, p=0.69        	*/
+xi: logistic bact currenttb   		/*OR=2.4, p=0.09         	*/
+xi: logistic bact cough   		/*OR=4.7, p=0.000        	*/
+xi: logistic bact fever  		/*OR=2.98, p=0.000        	*/
+xi: logistic bact body_weight   	/*OR=3.2, p=0.000        	*/
+xi: logistic bact sweat  		/*OR=2.8, p=0.000        	*/
+xi: logistic bact hivcombined  		/*OR=1.9, p=0.001        	*/
 
 
 * Check for interaction between age and sex
@@ -261,19 +261,19 @@ recode missing .=0
 
 xi: logistic missing agegroup	 	/* OR=0.83, p=0.000 */
 xi: logistic missing i.agegroup 	/* OR=, p= all agegroups except 15-24 years are significant*/
-xi: logistic missing sex 			/* OR=1.6, p=0.000 */
+xi: logistic missing sex 		/* OR=1.6, p=0.000 */
 
 xi: logistic missing strata 		/* OR=0.90, p=0.000 */
 xi: logistic missing i.strata 		/* OR=, p= all sig */
 
-xi: logistic missing cxr1 			/* OR=4.3, p=0.000 */
-xi: logistic missing cxr2 			/* OR=0.84, p=0.434 */
+xi: logistic missing cxr1 		/* OR=4.3, p=0.000 */
+xi: logistic missing cxr2 		/* OR=0.84, p=0.434 */
 
-xi: logistic missing cough 			/* OR=4.4, p=0.000 */
+xi: logistic missing cough 		/* OR=4.4, p=0.000 */
 
 xi: logistic missing fever  		/* OR=2.5, p=0.000 */
 xi: logistic missing body_weight 	/* OR=2.4, p=0.000 */
-xi: logistic missing sweat 			/* OR=2.1, p=0.000 */
+xi: logistic missing sweat 		/* OR=2.1, p=0.000 */
 
 xi: logistic missing pasttb 		/* OR=1.4, p=0.004 */
 xi: logistic missing currenttb 		/* OR=1.2, p=0.583 */
@@ -406,21 +406,21 @@ nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) /* XXX (XXX-XXX) SE=XX.X*/
 
 * STRATUM-SPECIFIC PREVALENCE RATE
 xi: mim, category(fit) storebv : logit bact i.strata, robust cluster(cluster)
-nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 								                /*Strata 1       XXX (XXX-XXX)  */
-nlcom 100000*exp(_b[_cons]+_b[_Istrata_2])/(1+exp(_b[_cons]+_b[_Istrata_2]))  /*Strata 2       XXX (XXX-XXX)  */
-nlcom 100000*exp(_b[_cons]+_b[_Istrata_3])/(1+exp(_b[_cons]+_b[_Istrata_3]))  /*Strata 3       XXX (XXX-XXX)  */
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 					/*Strata 1       XXX (XXX-XXX)  */
+nlcom 100000*exp(_b[_cons]+_b[_Istrata_2])/(1+exp(_b[_cons]+_b[_Istrata_2]))  	/*Strata 2       XXX (XXX-XXX)  */
+nlcom 100000*exp(_b[_cons]+_b[_Istrata_3])/(1+exp(_b[_cons]+_b[_Istrata_3]))  	/*Strata 3       XXX (XXX-XXX)  */
 
 
 * SEX-SPECIFIC PREVALENCE RATE
 xi: mim, category(fit) storebv : logit bact i.sex, robust cluster(cluster)
-nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 								                /* female  XXX (XXX-XXX) */
-nlcom 100000*exp(_b[_cons]+_b[_Isex_1])/(1+exp(_b[_cons]+_b[_Isex_1])) 		    /* male 	 XXX (XXX-XXX) */
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 					/* female  XXX (XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Isex_1])/(1+exp(_b[_cons]+_b[_Isex_1])) 		/* male	   XXX (XXX-XXX) */
 
 
 * AGE-SPECIFIC PREVALENCE RATE
 xi: mim, category(fit) storebv : logit bact i.agegr, robust cluster(cluster)
-nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons]))									                  /*15-24yrs XXX  (XX-XXX)*/
-nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_5])/(1+exp(_b[_cons]+_b[_Iagegroup_5]))  /*25-34yrs XXX  (XXX-XXX)*/
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons]))					  /*15-24yrs XXX  (XX-XXX)  */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_5])/(1+exp(_b[_cons]+_b[_Iagegroup_5]))  /*25-34yrs XXX  (XXX-XXX) */
 nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_6])/(1+exp(_b[_cons]+_b[_Iagegroup_6]))  /*35-44yrs XXX  (XXX-XXXX)*/
 nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_7])/(1+exp(_b[_cons]+_b[_Iagegroup_7]))  /*45-54yrs XXX  (XXX-XXXX)*/
 nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_8])/(1+exp(_b[_cons]+_b[_Iagegroup_8]))  /*55-64yrs XXXX (XXX-XXXX)*/
