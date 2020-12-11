@@ -1,1 +1,426 @@
-To be entered
+*******************************************************************************
+*********  DO FILE FOR THE ANALYSIS OF THE TB PREVALENCE SURVEYS **************
+**** PART II. INDIVIDUAL LEVEL ANALYSES REQUIRING MULTIPLE IMPUTATION  ********
+*******************************************************************************
+* First created: 10 November 2013  ********************************************
+* Authors: Babis Sismanidis & Sian Floyd **************************************
+* Adapted for Analysis of Uganda TB Prevalence Survey: 11 November 2015 *******
+* Last updated: 27 November 2015 **********************************************
+* Adapted for Philippines TB Prevalence Survey: 14 June 2017 ******************
+* edited by Irwin Law**********************************************************
+* Adapted for Lesotho TB prevalence survey   10 December 2020******************
+*******************************************************************************
+
+* Variables used in this do file are based on the circulated data dictionary 
+
+* DATASETS
+/*
+enumerated.dta - 	The dataset with all enumerated individuals from the census.
+					        This dataset is used for the sole purpose of constructing population pyramids.
+eligible.dta -		The dataset with individuals eligible to participate in the survey (based on age and residency status) 
+					        This dataset is a subset of enumerated.dta (keep if eligibility==1)
+participants.dta -	This dataset contains all eligible individuals who actually participated in cluster operations (keep if part==1)
+analysis.dta -		The dataset with all eligible individuals who actually participated in cluster operations AND their outcomes 
+
+*/
+
+
+***********************
+
+* Change working directory
+
+clear all
+set more off, permanently
+*update your own directory
+*cd "C:\Users\..........." 
+
+
+**********************************************************************************************
+*************************   MODEL 2 - ROBUST STANDARD ERRORS WITH MI   ***********************
+**********************************************************************************************
+
+/*
+If imputing cases:
+This part of the do file can be repeated for each of the three outcomes:
+bacteriologically confirmed, Xpert positive and culture-positive (nb: include smear if it was done)
+
+If imputing lab results
+This part of the do file will NOT need to be repeated
+*/
+
+/* MI for Model 2 is done with the eligible for inclusion in the 
+survey population (participants AND non-participants) */
+
+/* the difference between model 2 and 3 are the use of weights and use of the non-suspects datatsets in model 3 */
+
+*pin here is the individual survey ID number
+
+*************************
+* STEP 0. LOAD THE DATA *
+*************************
+
+use eligible.dta, clear
+/* Eligible survey invitees who did not participate */
+keep if part!=1 
+count
+sort pin
+compress
+/*dropping agegroup from people with missing age */
+drop if agegroup==.
+save non_participants.dta, replace
+
+ 
+use analysis.dta, clear
+compress
+sort pin
+merge 1:1 pin using non_participants
+
+
+***************************************************************************************
+* STEP I. NECESSARY DATA MANIPULATION AND MI SET BEFORE THE IMPUTATION MODELS ARE RUN *
+***************************************************************************************
+
+* CREATE DUMMY VARIABLES FOR CATEGORICAL VARIABLES - THE ICE PROCEDURE USED FOR IMPUTATION REQUIRES THIS
+* CREATE 0/1 FOR BINARY VARIABLES - THE ICE PROCEDURE USED FOR IMPUTATION REQUIRES THIS
+* THESE STEPS MAY NOT BE NECESSARY WHEN USING THE NEW MI COMMANDS FROM STATA 12+ 
+
+* variables to certainly add in the imputation model are: sex, age group, stratum, field CXR result 
+* variables to consider adding: any of the usual TB symptoms, history of TB Rx 
+
+
+*sex 
+* already 1 = male and 0= female
+tab sex,m nol
+
+* age group
+tab agegroup, m nol
+
+* strata
+tab strata, m nol
+
+* Field CXR result (had to recode "other" to normal)
+tab cxr1, nol m
+recode cxr1 2=0
+tab cxr1, nol m
+
+* Central CXR result
+tab cxr2, m
+
+* Cough 
+tab cough,m
+
+*weightloss
+tab body_weight,m
+
+*fever
+tab fever,m
+
+*night sweats
+tab sweat,m
+
+*current treatment
+tab currenttb,m
+
+*past treatment
+tab pasttb,nol
+
+*reported HIV status
+tab hivcombined,m
+
+* Investigate missing data patterns
+misstable patterns bact agegroup sex strata cough fever body_weight sweat cxr1 cxr2 pasttb currenttb hivcombined, freq
+/*
+
+EXAMPLE SHOWN HERE
+
+             Missing-value patterns
+               (1 means complete)
+
+              |   Pattern
+    Frequency |  1  2  3  4    5  6  7  8    9 10
+  ------------+-----------------------------------
+        5,867 |  1  1  1  1    1  1  1  1    1  1
+              |
+       11,303 |  1  1  1  1    1  1  1  1    1  0
+        5,136 |  0  0  0  0    0  0  0  0    0  0
+        2,738 |  1  1  1  1    1  1  1  1    0  0
+          862 |  1  1  1  1    1  1  1  1    0  1
+          273 |  1  1  1  1    1  1  0  1    1  0
+          202 |  1  1  1  1    1  1  1  0    1  1
+          187 |  1  1  1  1    1  1  1  0    1  0
+           82 |  1  1  1  1    1  1  1  0    0  0
+           82 |  1  1  1  1    1  1  1  0    0  1
+           72 |  1  1  1  1    1  1  0  0    1  0
+           16 |  1  1  1  1    1  1  0  0    0  0
+           13 |  1  1  1  1    1  1  0  1    0  0
+            5 |  1  1  0  0    0  0  1  1    0  0
+            3 |  1  1  0  0    0  0  1  1    0  1
+            3 |  1  1  1  1    0  1  1  1    1  0
+            3 |  1  1  1  1    1  0  1  1    1  0
+            2 |  0  0  0  0    0  0  0  0    0  1
+            2 |  1  1  1  0    1  1  1  1    1  1
+            1 |  1  1  0  0    0  0  0  0    1  0
+            1 |  1  1  0  0    0  0  1  1    1  0
+            1 |  1  1  0  0    1  0  1  1    0  0
+            1 |  1  1  0  1    1  1  1  1    0  0
+            1 |  1  1  1  1    1  0  1  0    1  1
+            1 |  1  1  1  1    1  0  1  1    0  0
+  ------------+-----------------------------------
+       26,857 |
+
+  Variables are  (1) currenttb  (2) pasttb  (3) sweat  (4) body_weight  (5) cough  (6) fever  (7) cxr1  (8) bact  
+  (9) hivcombined (10) cxr2
+
+*/
+
+
+misstable patterns culture agegroup sex strata cough fever body_weight sweat cxr1 cxr2 pasttb currenttb hivcombined, freq
+
+misstable patterns gxp agegroup sex strata cough fever body_weight sweat cxr1 cxr2 pasttb currenttb hivcombined, freq
+
+
+
+******************************************************************************************
+* STEP II. ESTABLISH WHICH OF THE POTENTIAL PREDICTORS TO ADD INTO THE IMPUTATION MODEL *
+******************************************************************************************
+
+
+* You should typically use the bacteriologically confirmed outcome for establishing these associations
+* unless this includes a lot of missing data in which case smear, culture or Xpert might be a better options to explore
+
+tab bact,m
+
+** 1. Start by looking at associations between the outcome and each of the potential predictors
+
+*EXAMPLE OUTCOMES SHOWN BELOW
+
+tab agegroup bact, row chi 			/*chi-square=79, p=0.000     */
+tab sex bact, row chi 				/*chi-square=40, p=0.000     */
+tab strata bact, row chi 			/*chi-square=3.4, p=0.183	 */
+tab cxr1 bact, row chi 				/*chi-square=342, p=0.000    */
+tab cxr2 bact, row chi 				/*chi-square=495, p=0.000    */
+tab pasttb bact, row chi 			/*chi-square=0.16, p=0.685 */
+tab currenttb bact, row chi 		/*chi-square=3.1, p=0.080 */
+tab cough bact, row chi 			/*chi-square=88, p=0.000     */
+tab fever bact, row chi 			/*chi-square=19, p=0.000     */
+tab body_weight bact, row chi 		/*chi-square=31, p=0.000     */
+tab sweat bact, row chi 			/*chi-square=17, p=0.000     */
+tab hivcombined bact, row chi 		/*chi-square=11, p=0.001     */
+
+* With typically large sample sizes involved most associations will be "significant", it is hence also important
+* to quantify associations with OR's to also establish their importance
+
+
+xi: logistic bact i.agegroup   		/*OR=, p=  all but age group 15-24 are significant     */
+xi: logistic bact sex  				/*OR=3.1, p= 0.000        */
+xi: logistic bact i.strata   		/*OR=, p=  none are signficant   */
+xi: logistic bact cxr1   			/*OR=178, p=0.000        */
+xi: logistic bact cxr2   			/*OR=34, p=0.000         */
+xi: logistic bact pasttb   			/*chi-square=1.1, p=0.69        */
+xi: logistic bact currenttb   		/*chi-square=2.4, p=0.09         */
+xi: logistic bact cough   			/*chi-square=4.7, p=0.000        */
+xi: logistic bact fever  			/*chi-square=2.98, p=0.000        */
+xi: logistic bact body_weight   	/*chi-square=3.2, p=0.000        */
+xi: logistic bact sweat  			/*chi-square=2.8, p=0.000        */
+xi: logistic bact hivcombined  		/*chi-square=1.9, p=0.001        */
+
+
+* Check for interaction between age and sex
+xi:logistic bact i.agegroup*sex
+est store a
+xi: logistic bact i.agegroup sex
+est store b
+lrtest a b /* interaction terms are not significant chi2=2.32, p=0.8032 */
+
+*Backwards step-wise: at 5% significance level, consider even 10% if need be
+
+xi: logistic bact agegroup sex strata cough fever body_weight sweat cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic bact agegroup sex strata cough fever body_weight cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic bact agegroup sex strata cough body_weight cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic bact agegroup strata cough body_weight cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic bact agegroup cough body_weight cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic bact cough body_weight cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic bact cough cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic bact cough cxr1 cxr2 pasttb hivcombined
+
+* From the multivariate model variables identified are:  agegroup sex cough fever cxr1 cxr2 pasttb hivcombined
+
+
+*********************************************************************
+* STEP III. CONTINUE BY LOOKING AT ASSOCIATIONS BETWEEN MISSINGNESS *
+**************** AND EACH OF THE POTENTIAL PREDICTORS****************
+*********************************************************************
+
+drop missing
+gen missing=1 if bact==. 
+recode missing .=0 
+
+*EXAMPLE OUTCOMES SHOWN BELOW
+
+*Univariate association between the outcome and symptoms
+
+xi: logistic missing agegroup	 	/* OR=0.83, p=0.000 */
+xi: logistic missing i.agegroup 	/* OR=, p= all agegroups except 15-24 years are significant*/
+xi: logistic missing sex 			/* OR=1.6, p=0.000 */
+
+xi: logistic missing strata 		/* OR=0.90, p=0.000 */
+xi: logistic missing i.strata 		/* OR=, p= all sig */
+
+xi: logistic missing cxr1 			/* OR=4.3, p=0.000 */
+xi: logistic missing cxr2 			/* OR=0.84, p=0.434 */
+
+xi: logistic missing cough 			/* OR=4.4, p=0.000 */
+
+xi: logistic missing fever  		/* OR=2.5, p=0.000 */
+xi: logistic missing body_weight 	/* OR=2.4, p=0.000 */
+xi: logistic missing sweat 			/* OR=2.1, p=0.000 */
+
+xi: logistic missing pasttb 		/* OR=1.4, p=0.004 */
+xi: logistic missing currenttb 		/* OR=1.2, p=0.583 */
+
+xi: logistic missing hivcombined 	/* OR=1.5, p=0.000 */
+
+
+* One obvious one to check is that between age and sex
+xi:logistic missing i.agegroup*sex
+est store a
+xi: logistic missing i.agegroup sex
+est store b
+lrtest a b /* interaction terms are significant chi=30, p=0.0000*/
+
+
+xi: logistic missing agegroup sex strata cough fever body_weight sweat cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic missing agegroup sex strata fever body_weight sweat cxr1 cxr2 pasttb currenttb hivcombined
+xi: logistic missing agegroup sex strata fever body_weight sweat cxr1 cxr2 pasttb currenttb
+xi: logistic missing agegroup sex strata fever sweat cxr1 cxr2 pasttb currenttb
+xi: logistic missing agegroup sex strata fever sweat cxr1 cxr2 currenttb
+xi: logistic missing agegroup sex fever sweat cxr1 cxr2 currenttb
+xi: logistic missing sex fever sweat cxr1 cxr2 currenttb
+xi: logistic missing sex fever cxr1 cxr2 currenttb
+xi: logistic missing sex cxr1 cxr2 currenttb
+
+*** Final imputation model variables include: i.agegroup i.sex cough fever cxr1 cxr2 pasttb currenttb hivcombined
+
+
+keep cluster bact agegroup sex strata cough fever cxr1 cxr2 pasttb currenttb hivcombined
+
+compress
+
+*create interaction terms to include in the model
+gen age_sex_int=agegroup*sex
+
+save mid.dta, replace
+
+
+****************************************************************
+* STEP IV. USE THE ICE PROCEDURE TO IMPUTE LAB RESULTS **********
+****************************************************************
+
+* Do this using as predictors: age, sex, strata, AND ...
+* Start with 5 imputed datasets (option m(5)), repeat with 10, even 20 until pooled estimates stabilise. Takes time!
+* Cycle through the imputation 10 times before keeping 1 (option cycle(10)) to ensure estimates are "stable" 
+* Set a seed so that results are reproducible (option seed(xxx))
+* You could exchange "bact" for a different outcome e.g. gxp, culture, smear
+
+***at this point keep a dataset only with the variables that are used in the imputation
+***this will make it quicker to impute
+
+
+*****************************************
+***** BACTERIOLOGICALLY-CONFIRMED OUTCOME
+*****************************************
+
+* Check working directory
+
+clear all
+set more off, permanently
+*update your own directory
+*cd "C:\Users\..........." 
+
+use mid.dta, clear
+
+* Start with 5 imputed datasets and 10 cycles but also try higher numbers
+*DRY RUN
+ice bact age_sex_int i.agegroup sex strata cough fever cxr1 cxr2 pasttb currenttb hivcombined, dryrun 
+
+*10/10
+ice bact age_sex_int i.agegroup sex strata cough fever cxr1 cxr2 pasttb currenttb hivcombined, ///
+saving(m2_bact_10_10, replace) m(10) cycle(10) seed(101)
+
+use mid.dta, clear
+
+*20/15
+ice bact age_sex_int i.agegroup sex strata cough fever cxr1 cxr2 pasttb currenttb hivcombined, ///
+saving(m2_bact_20_15, replace) m(20) cycle(15) seed(101)
+
+use mid.dta, clear
+
+*20/20
+ice bact age_sex_int i.agegroup sex strata cough fever cxr1 cxr2 pasttb currenttb hivcombined, ///
+saving(m2_bact_20_20, replace) m(20) cycle(20) seed(101)
+
+
+
+**********************************************************************************
+* Combining results from all datasets (run what you need depending on the outcome)
+**********************************************************************************
+*BACT
+set more off
+
+*use m2_bact_10_10, clear /* XXX (XXX-XXX) */
+*use m2_bact_20_15, clear /* XXX (XXX-XXX) */
+use m2_bact_20_20, clear  /* XXX (XXX-XXX) */
+tab _mj
+bysort _mj: tab bact, m
+
+/*
+
+IF REQUIRED
+
+*XPERT
+use m2_xpert_10_10, clear  /*  (-) */
+use m2_xpert_20_15, clear  /*  (-) */
+use m2_xpert_20_20, clear  /*  (-) */
+tab _mj
+bysort _mj: tab xpert, m
+
+*CULTURE
+*use m2_culture_10_10, clear  /*  (-) */
+*use m2_culture_20_15, clear  /*  (-) */
+use m2_culture_20_20, clear   /*  (-) */
+tab _mj
+bysort _mj: tab culture, m
+
+/*
+
+*******************************************************************************
+* STEP V: OBTAIN TB PREVALENCE ESTIMATES **************************************
+*******************************************************************************
+
+*******************************
+* BACTERIOLOGICALLY CONFIRMED *
+*******************************
+* OVERALL PREVALENCE RATE
+mim, category(fit) storebv : logit bact, robust cluster(cluster)
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) /* XXX (XXX-XXX) SE=XX.X*/
+
+* STRATUM-SPECIFIC PREVALENCE RATE
+xi: mim, category(fit) storebv : logit bact i.strata, robust cluster(cluster)
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 								                /*Strata 1       XXX (XXX-XXX)  */
+nlcom 100000*exp(_b[_cons]+_b[_Istrata_2])/(1+exp(_b[_cons]+_b[_Istrata_2]))  /*Strata 2       XXX (XXX-XXX)  */
+nlcom 100000*exp(_b[_cons]+_b[_Istrata_3])/(1+exp(_b[_cons]+_b[_Istrata_3]))  /*Strata 3       XXX (XXX-XXX)  */
+
+
+* SEX-SPECIFIC PREVALENCE RATE
+xi: mim, category(fit) storebv : logit bact i.sex, robust cluster(cluster)
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 								                /* female  XXX (XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Isex_1])/(1+exp(_b[_cons]+_b[_Isex_1])) 		    /* male 	 XXX (XXX-XXX) */
+
+
+* AGE-SPECIFIC PREVALENCE RATE
+xi: mim, category(fit) storebv : logit bact i.agegr, robust cluster(cluster)
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons]))									                  /*15-24yrs XXX  (XX-XXX)*/
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_5])/(1+exp(_b[_cons]+_b[_Iagegroup_5]))  /*25-34yrs XXX  (XXX-XXX)*/
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_6])/(1+exp(_b[_cons]+_b[_Iagegroup_6]))  /*35-44yrs XXX  (XXX-XXXX)*/
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_7])/(1+exp(_b[_cons]+_b[_Iagegroup_7]))  /*45-54yrs XXX  (XXX-XXXX)*/
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_8])/(1+exp(_b[_cons]+_b[_Iagegroup_8]))  /*55-64yrs XXXX (XXX-XXXX)*/
